@@ -118,3 +118,132 @@ ref !== a; // true
 * es6부턴 객체의 순서가 중요하다. 이전에는 해쉬맵의 형태였다면 지금은 링크드 맵이라고 보면 된다.
 
 
+# COUPLING 
+* 커플링은 의존을 양쪽에서 하고 있는 경우를 의미한다.
+* 아래는 컨텐츠 커플링을 하고 있는 나쁜 예제이다.
+
+## 예제1
+```js
+const A = class {
+  constructor(v) {
+    this.v = v;
+  }
+};
+const B = class {
+  constructor(a) {
+    this.v = a.v;
+  }
+};
+const b = new B(new A(3));
+```
+
+## 예제2
+```js
+const Common = class {
+  constructor(v) {
+    this.v = v;
+  }
+}
+const A = class {
+  constructor(c) {
+    this.v = c.v;
+  }
+};
+const B = class {
+  constructor(c) {
+    this.v = c.v;
+  }
+};
+const a = new A(new Common(3)); 
+const b = new B(new Common(3));
+```
+
+## 예제3
+```js
+const A = class {
+  constructor (member) { this.v = member.name; }
+};
+const B = class {
+  constructor(member) { this.v = member.age;}
+};
+fetch('/member').then(res=>res.json()).then(member => {
+  const a = new A(member); 
+  const b = new B(member);
+});
+```
+
+* 위의 external 커플링은 나쁜 케이스다. 예를 들어 member.name이 아니라 member.username을 쓰기로 하면 A 클래스는 망가진다. 하지만 서버에서 json 데이터를 받아쓸 때 이는 어쩔 수 없는 부분이다. 그래서 강결합 된 나쁜 케이스지만 타 개발자들과 얘기를 해야 하는 필수불가결한 측면이 있다. 
+
+```js
+const A = class {
+  process(flag, v) {
+    switch(flag) {
+      case 1: return this.run1(v);
+      case 2: return this.run2(v);
+      case 3: return this.run3(v);
+    }
+  }
+}
+
+const B = class {
+  constructor(a) {
+    this.a = a;
+  }
+  noop() { this.a.process(1); }
+  echo(data) {
+    this.a.process(2, data);
+  }
+};
+const b = new B(new A());
+b.noop();
+b.echo('test');
+```
+
+* 위의 경우 점원과 소비자 간의 메뉴판이라는 인터페이스를 떠올려 보면 된다. 메뉴 1번 메뉴 2번 메뉴 3번의 규칙이 정해져 있는 것이다. 그러나 이렇게 정해진 인터페이스가 있다는 건 메뉴 번호에 따라 실행시키는 switch 코드를 바꿀 수 없다는 걸 의미한다. 메뉴의 번호가 강결합된 것이다. 이걸 컨트롤 커플링이라고 한다.
+
+```js
+const A = class {
+  add(data) {
+    data.count++;
+  }
+}
+
+const B = class {
+  constructor(counter) {
+    this.counter = counter;
+    this.data = {a:1, count:0};
+  }
+  count() {
+    this.counter.add(this.data);
+  }
+};
+const b = new B(new A());
+b.count();
+b.count();
+```
+
+* count 키를 cnt로 바꾸면 모든 게 다 깨진다. 되도록이면 필요한 데까지만 데이터를 넘겨줘야 한다. 데이터의 카운터만 건너줬어야 하는데 더 넓은 범위를 넘겨주면 의존성이 생겨서 문제가 발생하는 것이다. 이를 스탬프 커플링이라고 한다.
+
+```js
+const A = class {
+  add(count) {
+    return count + 1;
+  }
+}
+
+const B = class {
+  constructor(counter) {
+    this.counter = counter;
+    this.data = {a:1, count:0};
+  }
+  count() {
+    this.data.count = 
+    this.counter.add(this.data.count);
+  }
+};
+const b = new B(new A());
+b.count();
+b.count();
+```
+
+* 위의 예제는 데이터 커플링의 예제다. 
